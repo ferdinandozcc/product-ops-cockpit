@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Product Ops Cockpit</title>
+<style>
+  :root{
+    --bg:#0c1020; --bg2:#0f1426; --panel:#151b31; --panel2:#1b2340;
+    --line:rgba(255,255,255,.08); --line2:rgba(255,255,255,.14);
+    --tx:#e9edf8; --mut:#8e9bbd; --mut2:#67739a;
+    --acc:#5b8cff; --good:#27e0a2; --warn:#ffb547; --bad:#ff5d79;
+    --r:16px;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{
+    background:radial-gradient(1200px 700px at 80% -10%, #16203f 0%, var(--bg) 55%) fixed;
+    color:var(--tx); font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1180px;margin:0 auto;padding:22px 20px 60px}
+  /* top bar */
+  .top{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:18px}
+  .brand{display:flex;align-items:baseline;gap:10px}
+  .brand h1{font-size:20px;margin:0;letter-spacing:.2px}
+  .brand .dot{width:9px;height:9px;border-radius:50%;background:var(--good);box-shadow:0 0 12px var(--good)}
+  .brand small{color:var(--mut);font-size:12px}
+  .spacer{flex:1}
+  .seg{display:flex;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:4px;gap:2px}
+  .seg button{all:unset;cursor:pointer;padding:7px 12px;border-radius:9px;font-size:12.5px;color:var(--mut);white-space:nowrap}
+  .seg button.on{background:var(--panel2);color:var(--tx);box-shadow:inset 0 0 0 1px var(--line2)}
+  .sim{all:unset;cursor:pointer;display:flex;align-items:center;gap:8px;background:linear-gradient(180deg,#6d99ff,#4679 f0);background:linear-gradient(180deg,#6d99ff,#436ff0);color:#fff;font-weight:600;font-size:13px;padding:9px 15px;border-radius:12px;box-shadow:0 6px 20px rgba(67,111,240,.35)}
+  .sim:active{transform:translateY(1px)}
+  .sim .pulse{width:8px;height:8px;border-radius:50%;background:#fff;animation:blink 1.4s infinite}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+  /* tabs */
+  .tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin:4px 0 22px;flex-wrap:wrap}
+  .tabs button{all:unset;cursor:pointer;padding:11px 14px;font-size:13.5px;color:var(--mut);border-bottom:2px solid transparent;margin-bottom:-1px}
+  .tabs button.on{color:var(--tx);border-color:var(--acc)}
+  /* hero status */
+  .hero{display:flex;align-items:center;gap:18px;background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:16px 20px;margin-bottom:18px;position:relative;overflow:hidden}
+  .hero .big{display:flex;align-items:center;gap:14px}
+  .statuschip{display:inline-flex;align-items:center;gap:9px;font-weight:700;font-size:15px;padding:9px 16px;border-radius:999px}
+  .statuschip .d{width:11px;height:11px;border-radius:50%}
+  .hero p{margin:0;color:var(--mut);font-size:13px;max-width:560px}
+  .hero .week{margin-left:auto;text-align:right;color:var(--mut2);font-size:12px}
+  .hero .week b{display:block;color:var(--tx);font-size:22px;font-weight:700}
+  /* scorecard */
+  .section-h{display:flex;align-items:baseline;gap:10px;margin:26px 2px 12px}
+  .section-h h2{font-size:15px;margin:0;letter-spacing:.3px}
+  .section-h span{color:var(--mut2);font-size:12px}
+  .cards{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+  @media(max-width:860px){.cards{grid-template-columns:repeat(2,1fr)}}
+  .tile{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:15px 15px 14px;display:flex;flex-direction:column;gap:10px;transition:border-color .3s, transform .2s;position:relative;overflow:hidden}
+  .tile:hover{transform:translateY(-2px);border-color:var(--line2)}
+  .tile .lab{font-size:11.5px;color:var(--mut);text-transform:uppercase;letter-spacing:.6px;line-height:1.3;min-height:30px}
+  .tile .row{display:flex;align-items:center;gap:13px}
+  .ring{position:relative;width:62px;height:62px;border-radius:50%;flex:0 0 auto;display:grid;place-items:center;transition:background .6s}
+  .ring .hole{position:absolute;inset:6px;border-radius:50%;background:var(--panel)}
+  .ring .v{position:relative;font-weight:700;font-size:16px}
+  .tile .meta{font-size:12px;color:var(--mut2)}
+  .tile .meta b{color:var(--tx);font-weight:600}
+  .tile.flash{animation:flash .7s}
+  @keyframes flash{0%{box-shadow:0 0 0 0 rgba(91,140,255,.0)}30%{box-shadow:0 0 0 3px rgba(91,140,255,.35)}100%{box-shadow:0 0 0 0 rgba(91,140,255,0)}}
+  .count{font-weight:700;font-size:30px;line-height:1}
+  /* radar */
+  .proj{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+  @media(max-width:860px){.proj{grid-template-columns:1fr}}
+  .pcard{background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--line2);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:9px;transition:transform .2s,border-color .3s}
+  .pcard:hover{transform:translateY(-2px)}
+  .pcard.stall{border-left-color:var(--bad);background:linear-gradient(180deg,rgba(255,93,121,.08),transparent 60%)}
+  .pcard .ph{display:flex;align-items:center;justify-content:space-between;gap:8px}
+  .pcard .nm{font-weight:650;font-size:14.5px}
+  .pcard .line{font-size:11px;color:var(--mut2);text-transform:uppercase;letter-spacing:.5px}
+  .chip{font-size:11px;padding:3px 9px;border-radius:999px;background:var(--panel2);color:var(--mut);border:1px solid var(--line)}
+  .stages{display:flex;gap:4px;align-items:center;margin-top:2px}
+  .stages i{width:100%;height:5px;border-radius:3px;background:rgba(255,255,255,.08)}
+  .stages i.on{background:var(--acc)}
+  .stages i.done{background:var(--good)}
+  .pfoot{display:flex;align-items:center;justify-content:space-between;font-size:12px;color:var(--mut2)}
+  .move{display:inline-flex;align-items:center;gap:7px}
+  .move .ld{width:8px;height:8px;border-radius:50%;background:var(--good)}
+  .pcard.stall .move .ld{background:var(--bad);animation:beat 1.1s infinite}
+  @keyframes beat{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.7);opacity:.55}}
+  .dep{color:var(--warn)}
+  /* generic panels */
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:18px}
+  .muted{color:var(--mut)}
+  .list{display:flex;flex-direction:column;gap:10px}
+  .lrow{display:flex;align-items:center;gap:12px;background:var(--bg2);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+  .lrow .grow{flex:1;min-width:0}
+  .lrow .t{font-weight:600;font-size:14px}
+  .lrow .s{font-size:12px;color:var(--mut2)}
+  .tag{font-size:11px;padding:4px 10px;border-radius:999px;font-weight:600}
+  .tag.g{background:rgba(39,224,162,.14);color:var(--good)}
+  .tag.w{background:rgba(255,181,71,.14);color:var(--warn)}
+  .tag.b{background:rgba(255,93,121,.15);color:var(--bad)}
+  .tag.n{background:var(--panel2);color:var(--mut)}
+  /* checkpoint gate */
+  .gate{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+  @media(max-width:760px){.gate{grid-template-columns:1fr}}
+  .checks{display:flex;flex-direction:column;gap:10px}
+  .check{display:flex;align-items:center;gap:12px;background:var(--bg2);border:1px solid var(--line);border-radius:12px;padding:13px 14px}
+  .mk{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;font-weight:800;font-size:14px;flex:0 0 auto}
+  .mk.ok{background:rgba(39,224,162,.16);color:var(--good)}
+  .mk.no{background:rgba(255,93,121,.16);color:var(--bad)}
+  .check .ct{font-size:13.5px}
+  .check .cs{font-size:12px;color:var(--mut2)}
+  .verdict{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;border-radius:14px;padding:22px;text-align:center}
+  .verdict .lamp{width:80px;height:80px;border-radius:50%}
+  .verdict h3{margin:0;font-size:17px}
+  .verdict p{margin:0;font-size:13px;color:var(--mut)}
+  select{all:unset;cursor:pointer;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:9px 12px;color:var(--tx);font-size:13.5px}
+  /* fields */
+  .fields{display:flex;gap:7px;flex-wrap:wrap}
+  .fp{font-size:11px;padding:4px 9px;border-radius:8px;border:1px solid var(--line)}
+  .fp.y{background:rgba(39,224,162,.12);color:var(--good);border-color:transparent}
+  .fp.n{background:rgba(255,93,121,.10);color:var(--bad);border-color:transparent;text-decoration:line-through;opacity:.8}
+  /* update */
+  .update{white-space:pre-wrap;font:13.5px/1.7 ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--bg2);border:1px solid var(--line);border-radius:12px;padding:18px;color:#cdd6ee}
+  .note{font-size:12px;color:var(--mut2);margin-top:10px}
+  .btn{all:unset;cursor:pointer;font-size:12.5px;font-weight:600;color:var(--acc);padding:7px 0}
+  /* modelo */
+  .umlwrap{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  @media(max-width:860px){.umlwrap{grid-template-columns:1fr}}
+  .cls{background:var(--bg2);border:1px solid var(--line2);border-radius:10px;padding:0;overflow:hidden;font-size:12px}
+  .cls .h{background:var(--panel2);padding:8px 11px;font-weight:700;border-bottom:1px solid var(--line)}
+  .cls ul{margin:0;padding:9px 11px 11px 24px;color:var(--mut)}
+  .clsgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .sm{display:flex;flex-wrap:wrap;align-items:center;gap:7px;margin:8px 0 4px}
+  .st{background:rgba(91,140,255,.14);color:#aec4ff;border:1px solid rgba(91,140,255,.3);border-radius:999px;padding:6px 12px;font-size:12px;font-weight:600}
+  .sep{color:var(--mut2);font-size:11px}
+  .guard{font-size:11px;color:var(--warn);background:rgba(255,181,71,.1);padding:3px 8px;border-radius:7px}
+  .deriv{font-size:12px;color:var(--mut2);margin-top:6px}
+  /* toast */
+  .toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(30px);background:var(--panel2);border:1px solid var(--line2);color:var(--tx);padding:12px 18px;border-radius:12px;font-size:13px;box-shadow:0 12px 40px rgba(0,0,0,.45);opacity:0;pointer-events:none;transition:.35s;display:flex;align-items:center;gap:10px;z-index:50}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  .toast .d{width:9px;height:9px;border-radius:50%;background:var(--acc)}
+  .hide{display:none!important}
+  /* fuentes */
+  .conns{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:8px}
+  @media(max-width:860px){.conns{grid-template-columns:1fr}}
+  .conn{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:9px}
+  .conn .ch{display:flex;align-items:center;justify-content:space-between;gap:8px}
+  .conn .nm{font-weight:650;font-size:14px;display:flex;align-items:center;gap:8px}
+  .conn .rol{font-size:12px;color:var(--mut)}
+  .conn .rw{font-size:11px;color:var(--mut2);text-transform:uppercase;letter-spacing:.4px}
+  .sw{all:unset;cursor:pointer;display:inline-flex;align-items:center;gap:7px;font-size:11px;color:var(--mut)}
+  .sw .tr{width:34px;height:19px;border-radius:999px;background:rgba(255,255,255,.12);position:relative;transition:.2s}
+  .sw .tr::after{content:'';position:absolute;top:2px;left:2px;width:15px;height:15px;border-radius:50%;background:#fff;transition:.2s}
+  .sw.on .tr{background:var(--good)}
+  .sw.on .tr::after{left:17px}
+  .ttag{font-size:11px;padding:3px 9px;border-radius:7px;background:var(--panel2);border:1px solid var(--line);color:var(--mut)}
+  .flowrow{display:flex;align-items:center;gap:12px;background:var(--bg2);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+  .flowrow .m{font-weight:600;font-size:13.5px;width:168px;flex:0 0 auto}
+  .flowrow .e{font-size:12.5px;color:var(--mut);flex:1;min-width:0}
+  .flowrow .ss{display:flex;gap:6px;flex-wrap:wrap;flex:0 0 auto}
+  @media(max-width:620px){.flowrow{flex-wrap:wrap}.flowrow .m{width:100%}}
+  /* agentes */
+  .evalbar{display:flex;gap:26px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:15px 20px;margin-bottom:18px;flex-wrap:wrap}
+  .evalbar .e{display:flex;flex-direction:column;gap:3px}
+  .evalbar .e b{font-size:25px;font-weight:700;line-height:1}
+  .evalbar .e span{font-size:11px;color:var(--mut2);text-transform:uppercase;letter-spacing:.5px}
+  .agrid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+  @media(max-width:860px){.agrid{grid-template-columns:1fr}}
+  .acard{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:8px}
+  .acard .at{display:flex;align-items:center;justify-content:space-between;gap:8px}
+  .acard .an{font-weight:650;font-size:14px}
+  .acard .ad{font-size:12.5px;color:var(--mut);min-height:34px}
+  .acard .jd{font-size:11px;color:var(--acc)}
+  .evg{display:flex;gap:16px;border-top:1px solid var(--line);padding-top:10px;margin-top:2px}
+  .evg .x{display:flex;flex-direction:column;gap:1px}
+  .evg .x b{font-size:15px;font-weight:700}
+  .evg .x span{font-size:10px;color:var(--mut2);text-transform:uppercase;letter-spacing:.3px}
+  .est{font-size:11px;padding:3px 10px;border-radius:999px}
+  .est.on{background:rgba(39,224,162,.14);color:var(--good)}
+  .est.off{background:var(--panel2);color:var(--mut)}
+  .find{display:flex;align-items:flex-start;gap:12px;background:var(--bg2);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+  .find .sv{width:9px;height:9px;border-radius:50%;margin-top:6px;flex:0 0 auto}
+  .find .fg{flex:1;min-width:0}
+  .find .ft{font-weight:600;font-size:13.5px}
+  .find .fe{font-size:12px;color:var(--mut2);margin-top:1px}
+  .find .fa{font-size:12px;color:var(--mut);margin-top:3px}
+  .find .acts{display:flex;gap:7px;flex:0 0 auto}
+  .abtn{all:unset;cursor:pointer;font-size:12px;font-weight:600;padding:6px 12px;border-radius:9px}
+  .abtn.ap{background:rgba(39,224,162,.15);color:var(--good)}
+  .abtn.ds{background:var(--panel2);color:var(--mut)}
+  .fdone{font-size:11px;padding:4px 11px;border-radius:999px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <div class="brand"><span class="dot"></span><h1>Product Ops Cockpit</h1><small>prototipo</small></div>
+    <div class="spacer"></div>
+    <div class="seg" id="scen"></div>
+    <button class="sim" id="simBtn"><span class="pulse"></span>Simular la semana</button>
+  </div>
+
+  <div class="tabs" id="tabs"></div>
+
+  <div id="view"></div>
+</div>
+<div class="toast" id="toast"><span class="d"></span><span id="toastTxt"></span></div>
+
+<script>
+(function(){
+  "use strict";
+  var STAGES = ["Idea","Scope","Build","Prelanzamiento","Resultado","Adopción","Cerrado"];
+  var si = function(s){ return STAGES.indexOf(s); };
+  var STALL = 5; // días sin movimiento
+
+  // ---------- modelo de dominio: fábrica ----------
+  function P(o){ // Proyecto
+    return Object.assign({
+      stage:"Build", days:1, baseline:true, scopeFits:true,
+      scopeChk:true, preChk:false, resultOk:false, adoption:false, dep:null, launch:false
+    }, o);
+  }
+  function R(o){ return Object.assign({type:"Petición", due:3, status:"answered"}, o); } // due en días; <0 vencida
+  function C(o){ return Object.assign({problema:true,paraQuien:true,objetivo:true,comoSabremos:true,senal:true}, o); }
+  function O(o){ return Object.assign({plan:true,agenda:true}, o); }
+
+  // ---------- 4 escenarios ----------
+  var SCEN = {
+    tranquila:{
+      nom:"Semana tranquila",
+      proy:[
+        P({id:"ck", n:"Checkout 2.0", line:"Monetización", own:"Owner 1", stage:"Build", days:1}),
+        P({id:"ob", n:"Onboarding guiado", line:"Growth", own:"Owner 2", stage:"Prelanzamiento", days:2, preChk:true, dep:"Checkout 2.0"}),
+        P({id:"bu", n:"Buscador con IA", line:"Core", own:"Owner 3", stage:"Resultado", days:1, preChk:true, resultOk:true}),
+        P({id:"pp", n:"Planes y precios", line:"Monetización", own:"Owner 4", stage:"Scope", days:2}),
+        P({id:"nt", n:"Notificaciones", line:"Growth", own:"Owner 2", stage:"Adopción", days:3, preChk:true, resultOk:true, adoption:true}),
+        P({id:"pm", n:"Panel de métricas", line:"Core", own:"Owner 5", stage:"Build", days:2})
+      ],
+      req:[ R({id:1,t:"Bug: export CSV",due:1}), R({id:2,t:"Dato de cohortes",due:2}), R({id:3,t:"Ajuste de copy",due:3}), R({id:4,t:"Acceso a panel",due:1}) ],
+      cand:[ C({id:1,n:"Referidos 2.0"}), C({id:2,n:"Modo oscuro"}), C({id:3,n:"Checkout express"}) ],
+      onb:[ O({id:1,role:"PM Growth"}) ],
+      upd:true
+    },
+    crisis:{
+      nom:"Semana de crisis",
+      proy:[
+        P({id:"ck", n:"Checkout 2.0", line:"Monetización", own:"Owner 1", stage:"Build", days:9}),
+        P({id:"ob", n:"Onboarding guiado", line:"Growth", own:"Owner 2", stage:"Prelanzamiento", days:2, preChk:false, baseline:false, dep:"Checkout 2.0"}),
+        P({id:"bu", n:"Buscador con IA", line:"Core", own:"Owner 3", stage:"Resultado", days:1, preChk:true, resultOk:false}),
+        P({id:"pp", n:"Planes y precios", line:"Monetización", own:"Owner 4", stage:"Scope", days:3, scopeFits:false, scopeChk:false}),
+        P({id:"nt", n:"Notificaciones", line:"Growth", own:"Owner 2", stage:"Build", days:7}),
+        P({id:"pm", n:"Panel de métricas", line:"Core", own:"Owner 5", stage:"Build", days:2})
+      ],
+      req:[ R({id:1,t:"Bug: pago duplicado",due:-2,status:"open"}), R({id:2,t:"Caída de informe",due:-1,status:"open"}), R({id:3,t:"Dato de churn",due:1,status:"classified"}), R({id:4,t:"Permisos",due:2}) ],
+      cand:[ C({id:1,n:"Referidos 2.0", comoSabremos:false, senal:false}), C({id:2,n:"Modo oscuro"}), C({id:3,n:"Checkout express", objetivo:false}) ],
+      onb:[ O({id:1,role:"PM Growth"}) ],
+      upd:false, dis:1
+    },
+    lanzamiento:{
+      nom:"Semana de lanzamiento",
+      proy:[
+        P({id:"ob", n:"Onboarding guiado", line:"Growth", own:"Owner 2", stage:"Prelanzamiento", days:1, preChk:true, launch:true}),
+        P({id:"ck", n:"Checkout 2.0", line:"Monetización", own:"Owner 1", stage:"Resultado", days:1, preChk:true, resultOk:true}),
+        P({id:"bu", n:"Buscador con IA", line:"Core", own:"Owner 3", stage:"Adopción", days:2, preChk:true, resultOk:true, adoption:true}),
+        P({id:"pp", n:"Planes y precios", line:"Monetización", own:"Owner 4", stage:"Build", days:2}),
+        P({id:"nt", n:"Notificaciones", line:"Growth", own:"Owner 2", stage:"Scope", days:1}),
+        P({id:"pm", n:"Panel de métricas", line:"Core", own:"Owner 5", stage:"Build", days:3})
+      ],
+      req:[ R({id:1,t:"Checklist de salida",due:0}), R({id:2,t:"Plan de rollback",due:1}), R({id:3,t:"Mensajes de lanzamiento",due:1}), R({id:4,t:"Dato de adopción",due:2}) ],
+      cand:[ C({id:1,n:"Referidos 2.0"}), C({id:2,n:"Modo oscuro"}), C({id:3,n:"Checkout express"}) ],
+      onb:[ O({id:1,role:"PM Growth"}) ],
+      upd:true
+    },
+    onboarding:{
+      nom:"Semana de onboarding",
+      proy:[
+        P({id:"ck", n:"Checkout 2.0", line:"Monetización", own:"Owner 1", stage:"Build", days:2}),
+        P({id:"ob", n:"Onboarding guiado", line:"Growth", own:"Owner 2", stage:"Adopción", days:2, preChk:true, resultOk:true, adoption:true}),
+        P({id:"bu", n:"Buscador con IA", line:"Core", own:"Owner 6", stage:"Scope", days:1}),
+        P({id:"pp", n:"Planes y precios", line:"Monetización", own:"Owner 4", stage:"Build", days:2}),
+        P({id:"pm", n:"Panel de métricas", line:"Core", own:"Owner 5", stage:"Resultado", days:1, preChk:true, resultOk:true})
+      ],
+      req:[ R({id:1,t:"Accesos nueva incorporación",due:1}), R({id:2,t:"Dato de activación",due:2}), R({id:3,t:"Ajuste de copy",due:3}) ],
+      cand:[ C({id:1,n:"Referidos 2.0"}), C({id:2,n:"Modo oscuro"}) ],
+      onb:[ O({id:1,role:"Owner 6 (PM Core)"}), O({id:2,role:"Analista de datos", agenda:false}) ],
+      upd:true
+    }
+  };
+
+  // ---------- estado vivo (copia del escenario) ----------
+  var cur = "tranquila";
+  var S = clone(SCEN[cur]);
+  var tab = "panel";
+
+  function clone(o){ return JSON.parse(JSON.stringify(o)); }
+
+  // ---------- agregaciones = scorecard ----------
+  function pct(a,b){ return b===0?100:Math.round(100*a/b); }
+  function metrics(){
+    var p=S.proy;
+    var scope = pct(p.filter(function(x){return x.scopeChk;}).length, p.length);
+    var preAll = p.filter(function(x){return si(x.stage)>=si("Prelanzamiento");});
+    var pre = pct(preAll.filter(function(x){return x.preChk;}).length, preAll.length);
+    var resAll = p.filter(function(x){return si(x.stage)>=si("Resultado");});
+    var res = pct(resAll.filter(function(x){return x.resultOk;}).length, resAll.length);
+    var cand = pct(S.cand.filter(function(c){return c.problema&&c.paraQuien&&c.objetivo&&c.comoSabremos&&c.senal;}).length, S.cand.length);
+    var reqs = pct(S.req.filter(function(r){return r.status==="answered"||r.status==="closed";}).length, S.req.length);
+    var onb = pct(S.onb.filter(function(o){return o.plan&&o.agenda;}).length, S.onb.length);
+    var dis = S.dis||0;
+    var stall = p.filter(function(x){return x.days>STALL;}).length;
+    return {scope:scope,pre:pre,res:res,cand:cand,reqs:reqs,onb:onb,dis:dis,upd:S.upd,stall:stall};
+  }
+  function overall(m){
+    if(m.dis>0 || m.stall>0 || !m.upd || m.scope<80 || m.reqs<80) {
+      var bad = (m.dis>0?1:0)+(m.stall>1?1:0)+(!m.upd?1:0)+(m.scope<70?1:0)+(m.reqs<70?1:0);
+      return bad>=2 ? "rojo" : "ámbar";
+    }
+    if(m.scope>=95&&m.pre>=90&&m.res>=90&&m.cand>=90&&m.reqs>=95&&m.onb>=90) return "verde";
+    return "ámbar";
+  }
+  var COL = {verde:"var(--good)","ámbar":"var(--warn)",rojo:"var(--bad)"};
+  function colorFor(v, isCount){
+    if(isCount) return v===0?"var(--good)":"var(--bad)";
+    return v>=90?"var(--good)":v>=65?"var(--warn)":"var(--bad)";
+  }
+
+  // ---------- render raíz ----------
+  var view = document.getElementById("view");
+  function render(){
+    if(tab==="panel") renderPanel();
+    else if(tab==="control") renderControl();
+    else if(tab==="grooming") renderGrooming();
+    else if(tab==="peticiones") renderReq();
+    else if(tab==="update") renderUpdate();
+    else if(tab==="fuentes") renderFuentes();
+    else if(tab==="agentes") renderAgentes();
+    else if(tab==="modelo") renderModelo();
+  }
+
+  // ---------- PANEL (scorecard + radar) ----------
+  function renderPanel(){
+    var m = metrics();
+    var ov = overall(m);
+    var tiles = [
+      {lab:"Checkpoint de scope", v:m.scope, meta:"antes del kick-off"},
+      {lab:"Checkpoint de prelanzamiento", v:m.pre, meta:"antes de salir"},
+      {lab:"Lecturas de resultado contrastadas", v:m.res, meta:"antes del review"},
+      {lab:"Candidatos con los 5 campos", v:m.cand, meta:"grooming de backlog"},
+      {lab:"Peticiones respondidas", v:m.reqs, meta:"nadie sin respuesta"},
+      {lab:"Incorporaciones con plan y agenda", v:m.onb, meta:"antes del primer día"},
+      {lab:"Update del Consejo", v:m.upd?100:0, meta:m.upd?"publicado":"sin publicar", bool:true},
+      {lab:"Desacuerdos sin decidir > 48h", v:m.dis, meta:"objetivo: 0", count:true}
+    ];
+    var desc = ov==="verde" ? "Todo en control: la cartera avanza, la medición está puesta y nadie se queda sin respuesta."
+             : ov==="ámbar" ? "Hay señales que atender esta semana. Mira el radar y el scorecard para ver dónde."
+             : "Semana caliente: proyectos parados, medición floja o decisiones encalladas. El radar lo tiene marcado.";
+    var h = '';
+    h += '<div class="hero">';
+    h +=   '<div class="big"><span class="statuschip" style="background:'+hexA(COL[ov],.14)+';color:'+COL[ov]+'"><span class="d" style="background:'+COL[ov]+'"></span>'+cap(ov)+'</span></div>';
+    h +=   '<p>'+desc+'</p>';
+    h +=   '<div class="week"><span>Estado de la semana</span><b>'+scoreNum(m)+'<span style="font-size:13px;color:var(--mut2)">/100</span></b></div>';
+    h += '</div>';
+
+    h += '<div class="section-h"><h2>Scorecard</h2><span>cómo sabremos que lo estás petando, calculado solo</span></div>';
+    h += '<div class="cards">';
+    tiles.forEach(function(t,i){
+      var c = t.count?colorFor(t.v,true):colorFor(t.v,false);
+      var shown = t.count? t.v : t.v+"%";
+      h += '<div class="tile" data-ti="'+i+'">';
+      h +=   '<div class="lab">'+t.lab+'</div>';
+      h +=   '<div class="row">';
+      if(t.count){
+        h += '<div class="count" style="color:'+c+'" data-count="'+t.v+'" data-suffix="">'+0+'</div>';
+      }else{
+        h += '<div class="ring" style="background:conic-gradient('+c+' 0deg, rgba(255,255,255,.08) 0deg)" data-ring="'+t.v+'" data-col="'+c+'"><div class="hole"></div><div class="v" data-count="'+t.v+'" data-suffix="'+(t.bool?"":"%")+'" style="color:'+c+'">0</div></div>';
+      }
+      h +=   '<div class="meta"><b>'+(t.bool?(t.v?"Sí":"No"):shown)+'</b><br>'+t.meta+'</div>';
+      h +=   '</div>';
+      h += '</div>';
+    });
+    h += '</div>';
+
+    // radar
+    h += '<div class="section-h"><h2>Radar de cartera</h2><span>'+m.stall+' parado'+(m.stall===1?"":"s")+' · revisión semanal</span></div>';
+    h += '<div class="proj">';
+    S.proy.forEach(function(p){
+      var stall = p.days>STALL;
+      var idx = si(p.stage);
+      var bars = STAGES.slice(0,6).map(function(_,k){
+        var cl = k<idx?"done":(k===idx?"on":"");
+        return '<i class="'+cl+'"></i>';
+      }).join("");
+      h += '<div class="pcard'+(stall?" stall":"")+'">';
+      h +=   '<div class="ph"><div><div class="nm">'+p.n+(p.launch?' <span class="tag g" style="margin-left:4px">lanza</span>':'')+'</div><div class="line">'+p.line+' · '+p.own+'</div></div><span class="chip">'+p.stage+'</span></div>';
+      h +=   '<div class="stages">'+bars+'</div>';
+      h +=   '<div class="pfoot"><span class="move"><span class="ld"></span>'+(stall?('parado '+p.days+' días'):('al día · '+p.days+'d'))+'</span>'+(p.dep?'<span class="dep">depende de '+p.dep+'</span>':'<span>'+flags(p)+'</span>')+'</div>';
+      h += '</div>';
+    });
+    h += '</div>';
+
+    view.innerHTML = h;
+    animateCounts();
+  }
+  function flags(p){
+    var f=[];
+    if(!p.baseline) f.push("sin baseline");
+    if(!p.scopeFits) f.push("fuera de apetito");
+    if(f.length) return '<span style="color:var(--bad)">'+f.join(" · ")+'</span>';
+    return '<span style="color:var(--good)">ok</span>';
+  }
+  function scoreNum(m){
+    var parts=[m.scope,m.pre,m.res,m.cand,m.reqs,m.onb,m.upd?100:0,m.dis>0?0:100,m.stall>0?Math.max(0,100-m.stall*25):100];
+    return Math.round(parts.reduce(function(a,b){return a+b;},0)/parts.length);
+  }
+
+  function animateCounts(){
+    var els = view.querySelectorAll("[data-count]");
+    els.forEach(function(el){
+      var to = parseFloat(el.getAttribute("data-count"));
+      var suf = el.getAttribute("data-suffix")||"";
+      var ring = el.closest(".ring");
+      var t0=null, dur=900;
+      function step(ts){
+        if(!t0)t0=ts; var k=Math.min(1,(ts-t0)/dur); var e=1-Math.pow(1-k,3);
+        var val = Math.round(to*e);
+        el.textContent = val+suf;
+        if(ring){ var col=ring.getAttribute("data-col"); ring.style.background="conic-gradient("+col+" "+(3.6*to*e)+"deg, rgba(255,255,255,.08) 0deg)"; }
+        if(k<1) requestAnimationFrame(step);
+      }
+      requestAnimationFrame(step);
+    });
+  }
+
+  // ---------- PUNTOS DE CONTROL ----------
+  var selProj = null;
+  function renderControl(){
+    if(!selProj || !S.proy.some(function(p){return p.n===selProj;})) selProj = S.proy[0].n;
+    var opts = S.proy.map(function(p){return '<option'+(p.n===selProj?" selected":"")+'>'+p.n+'</option>';}).join("");
+    var p = S.proy.filter(function(x){return x.n===selProj;})[0];
+    var c1 = p.scopeFits, c2 = p.baseline, c3 = si(p.stage)>=si("Prelanzamiento")?p.preChk:true;
+    var pass = c1&&c2&&c3;
+    var lampC = pass?"var(--good)":(c1&&c2)?"var(--warn)":"var(--bad)";
+    var h='';
+    h+='<div class="panel">';
+    h+='<div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap"><h2 style="margin:0;font-size:15px">Puntos de control</h2><span class="muted" style="font-size:12px">el gate es una transición con guarda</span><div style="margin-left:auto"><select id="selP">'+opts+'</select></div></div>';
+    h+='<div class="gate">';
+    h+='<div class="checks">';
+    h+=chk(c1,"El alcance cabe en el apetito", c1?"dentro de lo acordado":"se pasa del apetito declarado");
+    h+=chk(c2,"La métrica tiene baseline", c2?"medición lista para contrastar":"no se podrá leer el resultado");
+    h+=chk(c3,"Checklist de prelanzamiento", si(p.stage)<si("Prelanzamiento")?"aún no aplica en esta etapa":(c3?"completa":"incompleta, no debe salir"));
+    h+='</div>';
+    h+='<div class="verdict" style="background:'+hexA(lampC,.1)+'"><div class="lamp" style="background:'+lampC+';box-shadow:0 0 40px '+hexA(lampC,.6)+'"></div><h3 style="color:'+lampC+'">'+(pass?"Puede avanzar":"Bloqueado")+'</h3><p>'+(pass?"Cumple las guardas para pasar de etapa.":"No cruza la guarda hasta resolver lo marcado en rojo.")+'</p></div>';
+    h+='</div></div>';
+    view.innerHTML=h;
+    document.getElementById("selP").addEventListener("change",function(e){selProj=e.target.value;render();});
+  }
+  function chk(ok,t,s){
+    return '<div class="check"><span class="mk '+(ok?"ok":"no")+'">'+(ok?"✓":"✕")+'</span><div><div class="ct">'+t+'</div><div class="cs">'+s+'</div></div></div>';
+  }
+
+  // ---------- GROOMING ----------
+  function renderGrooming(){
+    var full = S.cand.filter(function(c){return c.problema&&c.paraQuien&&c.objetivo&&c.comoSabremos&&c.senal;}).length;
+    var p = pct(full,S.cand.length);
+    var h='<div class="panel">';
+    h+='<div style="display:flex;align-items:center;gap:14px;margin-bottom:16px"><h2 style="margin:0;font-size:15px">Grooming de backlog</h2><span class="muted" style="font-size:12px">cada candidato con sus 5 campos</span><div style="margin-left:auto;font-weight:700;font-size:22px;color:'+colorFor(p,false)+'">'+p+'% listos</div></div>';
+    h+='<div class="list">';
+    S.cand.forEach(function(c){
+      var def=[["problema","problema"],["paraQuien","para quién"],["objetivo","objetivo"],["comoSabremos","cómo sabremos"],["senal","señal de usuario"]];
+      var done = def.filter(function(d){return c[d[0]];}).length;
+      var fp = def.map(function(d){return '<span class="fp '+(c[d[0]]?"y":"n")+'">'+d[1]+'</span>';}).join("");
+      h+='<div class="lrow"><div class="grow"><div class="t">'+c.n+'</div><div class="fields" style="margin-top:7px">'+fp+'</div></div><span class="tag '+(done===5?"g":done>=3?"w":"b")+'">'+done+'/5</span></div>';
+    });
+    h+='</div></div>';
+    view.innerHTML=h;
+  }
+
+  // ---------- PETICIONES ----------
+  function renderReq(){
+    var ans = S.req.filter(function(r){return r.status==="answered"||r.status==="closed";}).length;
+    var p = pct(ans,S.req.length);
+    var h='<div class="panel">';
+    h+='<div style="display:flex;align-items:center;gap:14px;margin-bottom:16px"><h2 style="margin:0;font-size:15px">Cola de peticiones</h2><span class="muted" style="font-size:12px">clasificar y cerrar el loop</span><div style="margin-left:auto;font-weight:700;font-size:22px;color:'+colorFor(p,false)+'">'+p+'% respondidas</div></div>';
+    h+='<div class="list">';
+    S.req.forEach(function(r){
+      var over = r.due<0 && r.status!=="answered" && r.status!=="closed";
+      var tg = (r.status==="answered"||r.status==="closed")?["g","respondida"]:over?["b","vencida"]:r.status==="classified"?["w","clasificada"]:["n","abierta"];
+      var due = r.due<0?("vencida hace "+Math.abs(r.due)+"d"):("para cuándo: "+r.due+"d");
+      h+='<div class="lrow"><div class="grow"><div class="t">'+r.t+'</div><div class="s">'+r.type+' · '+due+'</div></div><span class="tag '+tg[0]+'">'+tg[1]+'</span></div>';
+    });
+    h+='</div></div>';
+    view.innerHTML=h;
+  }
+
+  // ---------- UPDATE ----------
+  function renderUpdate(){
+    view.innerHTML='<div class="panel"><div style="display:flex;align-items:center;gap:12px;margin-bottom:14px"><h2 style="margin:0;font-size:15px">Update del Consejo</h2><span class="muted" style="font-size:12px">borrador a partir del estado de la cartera</span><button class="btn" id="regen" style="margin-left:auto">Regenerar</button></div><div class="update" id="upd">'+genUpdate()+'</div><div class="note">Borrador compuesto a partir del estado (el paso de IA real corre en local con tu API key).</div></div>';
+    document.getElementById("regen").addEventListener("click",function(){document.getElementById("upd").textContent=genUpdate();toast("Update regenerado a partir del estado actual");});
+  }
+  function genUpdate(){
+    var m=metrics();
+    var onTrack=S.proy.filter(function(p){return p.days<=STALL;}).length;
+    var stalled=S.proy.filter(function(p){return p.days>STALL;});
+    var launching=S.proy.filter(function(p){return p.launch;});
+    var dec=[];
+    S.proy.forEach(function(p){ if(!p.scopeFits) dec.push(p.n+": el alcance se pasa del apetito"); if(!p.baseline) dec.push(p.n+": falta baseline antes de medir"); });
+    var overdue=S.req.filter(function(r){return r.due<0 && r.status!=="answered" && r.status!=="closed";});
+    var L=[];
+    L.push("UPDATE DE PRODUCTO · "+S.nom);
+    L.push("");
+    L.push("En qué estoy enfocado esta semana:");
+    L.push("· "+onTrack+" de "+S.proy.length+" proyectos al día; cartera con "+m.scope+"% de checkpoints de scope.");
+    if(stalled.length) L.push("· Desatascar: "+stalled.map(function(p){return p.n+" ("+p.days+"d)";}).join(", ")+".");
+    if(launching.length) L.push("· Lanzamiento: "+launching.map(function(p){return p.n;}).join(", ")+", repasando checklist de salida.");
+    L.push("· Peticiones: "+m.reqs+"% respondidas"+(overdue.length?(", "+overdue.length+" vencidas por cerrar"):", ninguna vencida")+".");
+    L.push("· Backlog: "+m.cand+"% de candidatos con los 5 campos.");
+    L.push("");
+    if(dec.length){ L.push("Decisiones que necesito del owner:"); dec.forEach(function(d){L.push("· "+d+".");}); }
+    else L.push("Sin decisiones bloqueadas con el owner.");
+    if(m.dis>0){ L.push(""); L.push("Alerta: "+m.dis+" desacuerdo(s) sin decidir más de 48h."); }
+    return L.join("\n");
+  }
+
+  // ---------- MODELO (UML) ----------
+  function renderModelo(){
+    var cls=[
+      ["Proyecto","marca, owner, etapa","últimoMovimiento","baseline","alcanceVsApetito","checklistPrelanzamiento","dependencias"],
+      ["Owner","rol","marca"],
+      ["Petición","tipo, origen","paraCuándo","estado"],
+      ["CandidatoBacklog","problema, paraQuién","objetivo","cómoSabremos","señalUsuario"],
+      ["Incorporación","personaRol","plantilla, plan, agenda"],
+      ["Escenario","nombre","snapshot de la cartera"]
+    ];
+    var clsH=cls.map(function(c){return '<div class="cls"><div class="h">'+c[0]+'</div><ul>'+c.slice(1).map(function(f){return '<li>'+f+'</li>';}).join("")+'</ul></div>';}).join("");
+    var proj=["Idea","Scope","Build","Prelanzamiento","Resultado","Adopción","Cerrado"];
+    var pet=["Abierta","Clasificada","Respondida","Cerrada"];
+    function chain(arr){ return arr.map(function(s,i){return '<span class="st">'+s+'</span>'+(i<arr.length-1?'<span class="sep">a</span>':'');}).join(""); }
+    var h='<div class="umlwrap">';
+    h+='<div class="panel"><h2 style="margin:0 0 12px;font-size:15px">Modelo de dominio</h2><div class="clsgrid">'+clsH+'</div><div class="deriv">Cada clase es solo dato: añadir un proyecto o una línea no toca el código.</div></div>';
+    h+='<div class="panel"><h2 style="margin:0 0 12px;font-size:15px">Máquinas de estado</h2>';
+    h+='<div style="font-size:12.5px;font-weight:600;color:var(--mut)">Ciclo del proyecto</div><div class="sm">'+chain(proj)+'</div>';
+    h+='<div style="display:flex;gap:8px;flex-wrap:wrap;margin:6px 0 2px"><span class="guard">guarda Scope a Build: cabe en apetito y baseline</span><span class="guard">guarda Prelanzamiento a Resultado: checklist completa</span></div>';
+    h+='<div class="deriv">Parado = sin movimiento más de '+STALL+' días (derivado, no un estado).</div>';
+    h+='<div style="font-size:12.5px;font-weight:600;color:var(--mut);margin-top:16px">Ciclo de la petición</div><div class="sm">'+chain(pet)+'</div>';
+    h+='<div class="deriv">Vencida = pasó su para cuándo sin responder (derivado).</div>';
+    h+='<div class="deriv" style="margin-top:14px;color:var(--acc)">El scorecard son agregaciones sobre estos estados: correcto por construcción.</div>';
+    h+='</div></div>';
+    view.innerHTML=h;
+  }
+
+  // ---------- FUENTES (conectores) ----------
+  var CONN={
+    linear:{nom:"Linear",rol:"Proyectos, estado, último movimiento, dependencias, peticiones",rw:"lee y escribe",mock:true},
+    posthog:{nom:"PostHog",rol:"Baseline, resultado, adopción, señal de usuario",rw:"lee",mock:true},
+    loom:{nom:"Loom",rol:"Demos y updates como evidencia",rw:"lee",mock:true},
+    slack:{nom:"Slack / Consejo",rol:"Publica el update semanal",rw:"escribe",mock:true},
+    jira:{nom:"Jira",rol:"Alternativa enterprise a Linear",rw:"lee y escribe",mock:true,alt:true},
+    anthropic:{nom:"Anthropic API",rol:"Capa de IA de los agentes",rw:"ejecuta",mock:true}
+  };
+  var FLOW=[
+    {mod:"Radar de cartera",ent:"proyectos, etapa, último movimiento, dependencias",src:["linear","jira"]},
+    {mod:"Puntos de control",ent:"alcance vs apetito, checklist de prelanzamiento",src:["linear"]},
+    {mod:"Puntos de control",ent:"baseline y lectura de resultado",src:["posthog"]},
+    {mod:"Grooming de backlog",ent:"candidatos y sus cinco campos",src:["linear"]},
+    {mod:"Grooming de backlog",ent:"señal de usuario",src:["posthog"]},
+    {mod:"Cola de peticiones",ent:"peticiones y bugs entrantes",src:["linear","jira"]},
+    {mod:"Update del Consejo",ent:"composición y publicación",src:["anthropic","slack"]},
+    {mod:"Evidencia",ent:"demos y updates en vídeo",src:["loom"]}
+  ];
+  function dotHTML(col){ return '<span style="width:9px;height:9px;border-radius:50%;display:inline-block;background:'+col+'"></span>'; }
+  function renderFuentes(){
+    var order=["linear","posthog","loom","slack","jira","anthropic"];
+    var h='<div class="section-h"><h2>Fuentes de datos</h2><span>cada módulo, su herramienta; alterna conectado o mock</span></div>';
+    h+='<div class="conns">';
+    order.forEach(function(k){ var c=CONN[k];
+      h+='<div class="conn"><div class="ch"><div class="nm">'+dotHTML(c.mock?"var(--mut2)":"var(--good)")+c.nom+(c.alt?' <span class="ttag">alt</span>':'')+'</div><button class="sw '+(c.mock?"":"on")+'" data-conn="'+k+'"><span class="tr"></span>'+(c.mock?"mock":"conectado")+'</button></div><div class="rol">'+c.rol+'</div><div class="rw">'+c.rw+'</div></div>';
+    });
+    h+='</div>';
+    h+='<div class="section-h"><h2>Flujo de datos</h2><span>de dónde sale cada dato del cockpit</span></div>';
+    h+='<div class="list">';
+    FLOW.forEach(function(f){
+      var ss=f.src.map(function(s){return '<span class="ttag">'+CONN[s].nom+'</span>';}).join("");
+      h+='<div class="flowrow"><div class="m">'+f.mod+'</div><div class="e">'+f.ent+'</div><div class="ss">'+ss+'</div></div>';
+    });
+    h+='</div>';
+    var anyConn=Object.keys(CONN).some(function(k){return !CONN[k].mock;});
+    h+='<div class="note" style="margin-top:12px">El modelo de dominio es el contrato: cada conector es un adaptador que rellena las mismas clases. '+(anyConn?'Con un conector activo, esos datos se leen en vivo en la versión local (el artifact publicado no llama APIs externas).':'Alterna un conector para ver la historia de integración.')+'</div>';
+    view.innerHTML=h;
+    view.querySelectorAll("[data-conn]").forEach(function(b){b.addEventListener("click",function(){var k=b.getAttribute("data-conn");CONN[k].mock=!CONN[k].mock;renderFuentes();});});
+  }
+
+  // ---------- AGENTES + eval + hallazgos ----------
+  var AGENTS=[
+    {id:"vigia",nom:"Vigía de cartera",desc:"Detecta parados, dependencias en riesgo y métricas sin baseline.",jd:"Checkpoints · 48h",estado:"activo",ev:[["precisión","96%"],["aceptación","live"],["cobertura","cartera"]]},
+    {id:"update",nom:"Redactor del update",desc:"Compone el borrador del Consejo de los lunes.",jd:"Update semanal",estado:"activo",ev:[["aceptación","88%"],["edición","2 líneas"],["ahorro","~30 min"]]},
+    {id:"checkpoint",nom:"Agente de checkpoint",desc:"Corre las guardas y emite pre-dictamen con evidencia.",jd:"100% checkpoints",estado:"diseñado",ev:[["precisión obj.","95%"],["falsos +","<5%"]]},
+    {id:"grooming",nom:"Agente de grooming",desc:"Propone los cinco campos que faltan en cada candidato.",jd:"100% con 5 campos",estado:"diseñado",ev:[["aceptación obj.","80%"],["cobertura","backlog"]]},
+    {id:"triage",nom:"Triage de peticiones",desc:"Clasifica lo que entra y sugiere su para cuándo.",jd:"Nadie sin respuesta",estado:"diseñado",ev:[["acierto clase","90%"],["ahorro","cola diaria"]]},
+    {id:"contraste",nom:"Contraste de datos",desc:"Valida la lectura del dato antes del Impact Review.",jd:"Lecturas contrastadas",estado:"diseñado",ev:[["detección obj.","90%"]]}
+  ];
+  var FND=[];
+  function genFindings(){
+    FND=[]; var k=0;
+    function F(type,title,ev,action){ return {id:"f"+(k++),type:type,title:title,ev:ev,action:action,state:"pendiente"}; }
+    S.proy.forEach(function(p){
+      if(p.days>STALL) FND.push(F("riesgo","Proyecto parado: "+p.n, p.own+" · sin movimiento en Linear "+p.days+" días", "Convocar al owner en la revisión semanal"));
+      if(!p.scopeFits) FND.push(F("bloqueo","Alcance fuera de apetito: "+p.n, "El scope declarado no cabe en el apetito", "Revisar scope con el owner antes de pasar a Build"));
+      if(!p.baseline) FND.push(F("medición","Métrica sin baseline: "+p.n, "No hay baseline en PostHog para este proyecto", "Definir baseline antes de medir el resultado"));
+    });
+    S.req.forEach(function(r){ if(r.due<0 && r.status!=="answered" && r.status!=="closed") FND.push(F("petición","Petición vencida: "+r.t, "Pasó su para cuándo hace "+Math.abs(r.due)+" días", "Cerrar el loop o avisar en el canal")); });
+    if(S.dis) FND.push(F("decisión","Desacuerdo sin decidir > 48h", "Un desacuerdo con un owner lleva más de 48 horas", "Escalar la decisión a Core Producto"));
+    S.cand.forEach(function(c){ var miss=[["problema","problema"],["paraQuien","para quién"],["objetivo","objetivo"],["comoSabremos","cómo sabremos"],["senal","señal de usuario"]].filter(function(d){return !c[d[0]];}); if(miss.length) FND.push(F("grooming","Candidato incompleto: "+c.n, "Faltan: "+miss.map(function(m){return m[1];}).join(", "), "Proponer borrador de los campos que faltan")); });
+  }
+  function renderAgentes(){
+    var ap=FND.filter(function(f){return f.state==="aprobado";}).length;
+    var ds=FND.filter(function(f){return f.state==="descartado";}).length;
+    var acc=(ap+ds)>0?Math.round(100*ap/(ap+ds)):null;
+    var activos=AGENTS.filter(function(a){return a.estado==="activo";}).length;
+    var pend=FND.filter(function(f){return f.state==="pendiente";}).length;
+    var h='<div class="section-h"><h2>Capa de agentes</h2><span>proponen y avisan con evidencia; el humano aprueba</span></div>';
+    h+='<div class="evalbar">';
+    h+='<div class="e"><b>'+FND.length+'</b><span>Hallazgos esta semana</span></div>';
+    h+='<div class="e"><b style="color:'+(acc===null?"var(--mut)":colorFor(acc,false))+'">'+(acc===null?"—":acc+"%")+'</b><span>Aceptación del vigía</span></div>';
+    h+='<div class="e"><b>'+activos+' / '+AGENTS.length+'</b><span>Agentes activos</span></div>';
+    h+='<div class="e"><b style="color:var(--good)">eval</b><span>cada agente, medido</span></div>';
+    h+='</div>';
+    h+='<div class="agrid">';
+    AGENTS.forEach(function(a){
+      var evs=a.ev.map(function(e){ var val=e[1]==="live"?(acc===null?"—":acc+"%"):e[1]; return '<div class="x"><b>'+val+'</b><span>'+e[0]+'</span></div>'; }).join("");
+      h+='<div class="acard"><div class="at"><div class="an">'+a.nom+'</div><span class="est '+(a.estado==="activo"?"on":"off")+'">'+a.estado+'</span></div><div class="ad">'+a.desc+'</div><div class="jd">'+a.jd+'</div><div class="evg">'+evs+'</div></div>';
+    });
+    h+='</div>';
+    h+='<div class="section-h"><h2>Hallazgos del vigía</h2><span>'+pend+' pendiente'+(pend===1?"":"s")+' · tú apruebas o descartas</span></div>';
+    h+='<div class="list">';
+    if(!FND.length) h+='<div class="panel muted">Sin hallazgos: la cartera está limpia esta semana. Prueba el escenario de crisis.</div>';
+    FND.forEach(function(f){
+      var bad=["bloqueo","petición","decisión"].indexOf(f.type)>=0;
+      var col=bad?"var(--bad)":"var(--warn)";
+      var acts = f.state==="pendiente"
+        ? '<div class="acts"><button class="abtn ap" data-fid="'+f.id+'" data-act="aprobado">Aprobar</button><button class="abtn ds" data-fid="'+f.id+'" data-act="descartado">Descartar</button></div>'
+        : '<span class="fdone tag '+(f.state==="aprobado"?"g":"n")+'">'+f.state+'</span>';
+      h+='<div class="find"><span class="sv" style="background:'+col+'"></span><div class="fg"><div class="ft">'+f.title+'</div><div class="fe">'+f.ev+'</div><div class="fa">Sugerencia: '+f.action+'</div></div>'+acts+'</div>';
+    });
+    h+='</div>';
+    h+='<div class="note" style="margin-top:12px">El vigía corre en vivo sobre el estado; los demás van como diseño con su eval objetivo. Todo es propuesta: ningún agente decide ni ejecuta. En la demo publicada el agente es determinista; el real corre en local.</div>';
+    view.innerHTML=h;
+    view.querySelectorAll("[data-fid]").forEach(function(b){b.addEventListener("click",function(){var id=b.getAttribute("data-fid"),act=b.getAttribute("data-act");FND.forEach(function(f){if(f.id===id)f.state=act;});renderAgentes();});});
+  }
+
+  // ---------- simular la semana ----------
+  function simular(){
+    var caught=0;
+    S.proy.forEach(function(p){
+      if(si(p.stage)<si("Cerrado")){
+        // proyectos sin cierre acumulan días; algunos avanzan
+        if(Math.random()<0.45 && si(p.stage)<si("Adopción")){
+          // avanza una etapa si cruza la guarda
+          var ni=si(p.stage)+1;
+          var canScope = !(p.stage==="Scope" && (!p.scopeFits||!p.baseline));
+          var canPre = !(p.stage==="Prelanzamiento" && !p.preChk);
+          if(canScope && canPre){ p.stage=STAGES[ni]; p.days=1; if(p.stage==="Prelanzamiento")p.preChk=true; if(p.stage==="Resultado")p.resultOk=true; if(p.stage==="Adopción")p.adoption=true; }
+          else p.days+=2;
+        } else {
+          p.days+=2;
+        }
+        if(p.days>STALL) caught++;
+      }
+    });
+    // una petición abierta pasa a respondida
+    var open=S.req.filter(function(r){return r.status!=="answered"&&r.status!=="closed";});
+    if(open.length){ open[0].status="answered"; }
+    // un candidato se completa
+    var inc=S.cand.filter(function(c){return !(c.problema&&c.paraQuien&&c.objetivo&&c.comoSabremos&&c.senal);});
+    if(inc.length){ inc[0].problema=inc[0].paraQuien=inc[0].objetivo=inc[0].comoSabremos=inc[0].senal=true; }
+    if(S.dis) S.dis=Math.max(0,S.dis-1);
+    S.upd=true;
+    genFindings();
+    tab="panel";
+    syncTabs();
+    render();
+    flashTiles();
+    toast("La semana avanzó. El radar marca "+caught+" proyecto"+(caught===1?"":"s")+" parado"+(caught===1?"":"s")+".");
+  }
+  function flashTiles(){ view.querySelectorAll(".tile").forEach(function(t){t.classList.add("flash");setTimeout(function(){t.classList.remove("flash");},700);}); }
+
+  // ---------- chrome: tabs, scenarios ----------
+  var TABS=[["panel","Panel"],["control","Puntos de control"],["grooming","Grooming"],["peticiones","Peticiones"],["update","Update"],["fuentes","Fuentes"],["agentes","Agentes"],["modelo","Modelo"]];
+  function buildTabs(){
+    document.getElementById("tabs").innerHTML=TABS.map(function(t){return '<button data-t="'+t[0]+'"'+(t[0]===tab?' class="on"':'')+'>'+t[1]+'</button>';}).join("");
+    document.getElementById("tabs").querySelectorAll("button").forEach(function(b){b.addEventListener("click",function(){tab=b.getAttribute("data-t");syncTabs();render();});});
+  }
+  function syncTabs(){ document.getElementById("tabs").querySelectorAll("button").forEach(function(b){b.classList.toggle("on",b.getAttribute("data-t")===tab);}); }
+  function buildScen(){
+    var keys=Object.keys(SCEN);
+    document.getElementById("scen").innerHTML=keys.map(function(k){return '<button data-s="'+k+'"'+(k===cur?' class="on"':'')+'>'+SCEN[k].nom.replace("Semana de ","").replace("Semana ","")+'</button>';}).join("");
+    document.getElementById("scen").querySelectorAll("button").forEach(function(b){b.addEventListener("click",function(){
+      cur=b.getAttribute("data-s"); S=clone(SCEN[cur]); genFindings();
+      document.getElementById("scen").querySelectorAll("button").forEach(function(x){x.classList.toggle("on",x.getAttribute("data-s")===cur);});
+      render();
+    });});
+  }
+  var toastT;
+  function toast(msg){ var e=document.getElementById("toast"); document.getElementById("toastTxt").textContent=msg; e.classList.add("show"); clearTimeout(toastT); toastT=setTimeout(function(){e.classList.remove("show");},2600); }
+
+  function cap(s){ return s.charAt(0).toUpperCase()+s.slice(1); }
+  function hexA(v,a){
+    var map={"var(--good)":"39,224,162","var(--warn)":"255,181,71","var(--bad)":"255,93,121","var(--acc)":"91,140,255"};
+    return "rgba("+(map[v]||"91,140,255")+","+a+")";
+  }
+
+  document.getElementById("simBtn").addEventListener("click",simular);
+  buildTabs(); buildScen(); genFindings(); render();
+})();
+</script>
+</body>
+</html>
