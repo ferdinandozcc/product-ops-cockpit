@@ -30,7 +30,7 @@
   .seg{display:flex;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:4px;gap:2px}
   .seg button{all:unset;cursor:pointer;padding:7px 12px;border-radius:9px;font-size:12.5px;color:var(--mut);white-space:nowrap}
   .seg button.on{background:var(--panel2);color:var(--tx);box-shadow:inset 0 0 0 1px var(--line2)}
-  .sim{all:unset;cursor:pointer;display:flex;align-items:center;gap:8px;background:linear-gradient(180deg,#6d99ff,#4679 f0);background:linear-gradient(180deg,#6d99ff,#436ff0);color:#fff;font-weight:600;font-size:13px;padding:9px 15px;border-radius:12px;box-shadow:0 6px 20px rgba(67,111,240,.35)}
+  .sim{all:unset;cursor:pointer;display:flex;align-items:center;gap:8px;background:linear-gradient(180deg,#6d99ff,#436ff0);background:linear-gradient(180deg,#6d99ff,#436ff0);color:#fff;font-weight:600;font-size:13px;padding:9px 15px;border-radius:12px;box-shadow:0 6px 20px rgba(67,111,240,.35)}
   .sim:active{transform:translateY(1px)}
   .sim .pulse{width:8px;height:8px;border-radius:50%;background:#fff;animation:blink 1.4s infinite}
   @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
@@ -589,8 +589,8 @@
 
   // ---------- AGENTES + eval + hallazgos ----------
   var AGENTS=[
-    {id:"vigia",nom:"Vigía de cartera",desc:"Detecta parados, dependencias en riesgo y métricas sin baseline.",jd:"Checkpoints · 48h",estado:"activo",ev:[["precisión","96%"],["aceptación","live"],["cobertura","cartera"]]},
-    {id:"update",nom:"Redactor del update",desc:"Compone el borrador del Consejo de los lunes.",jd:"Update semanal",estado:"activo",ev:[["aceptación","88%"],["edición","2 líneas"],["ahorro","~30 min"]]},
+    {id:"vigia",nom:"Vigía de cartera",desc:"Detecta parados, dependencias en riesgo y métricas sin baseline.",jd:"Checkpoints · 48h",estado:"demo",ev:[["aceptación","live"],["precisión obj.","95%"]]},
+    {id:"update",nom:"Redactor del update",desc:"Compone el borrador del Consejo de los lunes.",jd:"Update semanal",estado:"demo",ev:[["aceptación obj.","85%"],["edición obj.","≤ 2 líneas"]]},
     {id:"checkpoint",nom:"Agente de checkpoint",desc:"Corre las guardas y emite pre-dictamen con evidencia.",jd:"100% checkpoints",estado:"diseñado",ev:[["precisión obj.","95%"],["falsos +","<5%"]]},
     {id:"grooming",nom:"Agente de grooming",desc:"Propone los cinco campos que faltan en cada candidato.",jd:"100% con 5 campos",estado:"diseñado",ev:[["aceptación obj.","80%"],["cobertura","backlog"]]},
     {id:"triage",nom:"Triage de peticiones",desc:"Clasifica lo que entra y sugiere su para cuándo.",jd:"Nadie sin respuesta",estado:"diseñado",ev:[["acierto clase","90%"],["ahorro","cola diaria"]]},
@@ -613,19 +613,19 @@
     var ap=FND.filter(function(f){return f.state==="aprobado";}).length;
     var ds=FND.filter(function(f){return f.state==="descartado";}).length;
     var acc=(ap+ds)>0?Math.round(100*ap/(ap+ds)):null;
-    var activos=AGENTS.filter(function(a){return a.estado==="activo";}).length;
+    var activos=AGENTS.filter(function(a){return a.estado==="demo";}).length;
     var pend=FND.filter(function(f){return f.state==="pendiente";}).length;
     var h='<div class="section-h"><h2>Capa de agentes</h2><span>proponen y avisan con evidencia; el humano aprueba</span></div>';
     h+='<div class="evalbar">';
     h+='<div class="e"><b>'+FND.length+'</b><span>Hallazgos esta semana</span></div>';
     h+='<div class="e"><b style="color:'+(acc===null?"var(--mut)":colorFor(acc,false))+'">'+(acc===null?"—":acc+"%")+'</b><span>Aceptación del vigía</span></div>';
-    h+='<div class="e"><b>'+activos+' / '+AGENTS.length+'</b><span>Agentes activos</span></div>';
-    h+='<div class="e"><b style="color:var(--good)">eval</b><span>cada agente, medido</span></div>';
+    h+='<div class="e"><b>'+activos+' / '+AGENTS.length+'</b><span>Agentes en demo</span></div>';
+    h+='<div class="e"><b style="color:var(--good)">eval</b><span>cada agente con su eval objetivo</span></div>';
     h+='</div>';
     h+='<div class="agrid">';
     AGENTS.forEach(function(a){
       var evs=a.ev.map(function(e){ var val=e[1]==="live"?(acc===null?"—":acc+"%"):e[1]; return '<div class="x"><b>'+val+'</b><span>'+e[0]+'</span></div>'; }).join("");
-      h+='<div class="acard"><div class="at"><div class="an">'+a.nom+'</div><span class="est '+(a.estado==="activo"?"on":"off")+'">'+a.estado+'</span></div><div class="ad">'+a.desc+'</div><div class="jd">'+a.jd+'</div><div class="evg">'+evs+'</div></div>';
+      h+='<div class="acard"><div class="at"><div class="an">'+a.nom+'</div><span class="est '+(a.estado==="demo"?"on":"off")+'">'+a.estado+'</span></div><div class="ad">'+a.desc+'</div><div class="jd">'+a.jd+'</div><div class="evg">'+evs+'</div></div>';
     });
     h+='</div>';
     h+='<div class="section-h"><h2>Hallazgos del vigía</h2><span>'+pend+' pendiente'+(pend===1?"":"s")+' · tú apruebas o descartas</span></div>';
@@ -640,7 +640,7 @@
       h+='<div class="find"><span class="sv" style="background:'+col+'"></span><div class="fg"><div class="ft">'+f.title+'</div><div class="fe">'+f.ev+'</div><div class="fa">Sugerencia: '+f.action+'</div></div>'+acts+'</div>';
     });
     h+='</div>';
-    h+='<div class="note" style="margin-top:12px">El vigía corre en vivo sobre el estado; los demás van como diseño con su eval objetivo. Todo es propuesta: ningún agente decide ni ejecuta. En la demo publicada el agente es determinista; el real corre en local.</div>';
+    h+='<div class="note" style="margin-top:12px">El vigía y el redactor corren en la demo de forma determinista; la aceptación del vigía se calcula con tus clics. Las cifras marcadas «obj.» son objetivos de diseño, no resultados medidos. Todo es propuesta: ningún agente decide ni ejecuta. En la demo publicada el agente es determinista; el real corre en local.</div>';
     view.innerHTML=h;
     view.querySelectorAll("[data-fid]").forEach(function(b){b.addEventListener("click",function(){var id=b.getAttribute("data-fid"),act=b.getAttribute("data-act");FND.forEach(function(f){if(f.id===id)f.state=act;});renderAgentes();});});
   }
